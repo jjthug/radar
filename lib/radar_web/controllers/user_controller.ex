@@ -25,7 +25,7 @@ defmodule RadarWeb.UserController do
   def login_user(conn, %{"username" => username, "password" => password}) do
 
     case Users.login_user(username, password) do
-      {:ok, user} -> conn |> put_status(:ok) |> json(%{user: user})
+      {:ok, %{token: token, user: user}} -> conn |> put_status(:ok) |> json(%{user: user, token: token})
       {:error, _reason} -> conn |> put_status(:unauthorized) |> json(%{error: "unauthorized"})
     end
   end

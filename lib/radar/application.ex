@@ -9,6 +9,7 @@ defmodule Radar.Application do
   def start(_type, _args) do
     children = [
       Radar.Cache,
+      {Radar.Services.RateLimit, %{}},
       RadarWeb.Telemetry,
       Radar.Repo,
       {DNSCluster, query: Application.get_env(:radar, :dns_cluster_query) || :ignore},

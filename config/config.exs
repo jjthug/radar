@@ -22,6 +22,10 @@ config :radar, RadarWeb.Endpoint,
   pubsub_server: Radar.PubSub,
   live_view: [signing_salt: "wTLrKLsq"]
 
+config :radar, Radar.Services.RateLimit,
+  rate_limit_interval: 2_000,  # 2 seconds
+  cleanup_interval: 30_000     # Cleanup every 30 seconds
+
 # Configures the mailer
 #
 # By default it uses the "Local" adapter which stores the emails
