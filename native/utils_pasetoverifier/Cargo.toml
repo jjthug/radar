@@ -1,0 +1,15 @@
+[package]
+name = "utils_pasetoverifier"
+version = "0.1.0"
+authors = []
+edition = "2021"
+
+[lib]
+name = "utils_pasetoverifier"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.36.1"
+pasetors = "0.7.2"
+chrono = "0.4.40"
+serde_json = "1.0.139"

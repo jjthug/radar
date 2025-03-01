@@ -1,0 +1,13 @@
+[package]
+name = "utils_passwordhasher"
+version = "0.1.0"
+authors = []
+edition = "2021"
+
+[lib]
+name = "utils_passwordhasher"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.36.1"
+bcrypt = "0.17.0"

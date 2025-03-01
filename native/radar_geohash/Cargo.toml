@@ -1,0 +1,13 @@
+[package]
+name = "radar_geohash"
+version = "0.1.0"
+authors = []
+edition = "2021"
+
+[lib]
+name = "radar_geohash"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.36.1"
+geohash = "0.13"
