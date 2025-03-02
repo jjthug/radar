@@ -8,7 +8,7 @@ defmodule RadarWeb.UserSocket do
 
   def connect(%{"token" => token, "lat" => lat, "lng" => lng}, socket, _connect_info) do
     Logger.debug("Attempting to connect with token: #{inspect(token)}")
-
+    Logger.debug("Radar.Cache.get(token) => #{inspect(Radar.Cache.get(token))}")
     case Radar.Cache.get(token) do
       nil ->
         Logger.warning("Token validation failed")
@@ -24,7 +24,7 @@ defmodule RadarWeb.UserSocket do
         # Get geohash boundaries
         bounds =
           case GeoHash.geohash_bounds(central_geohash) do
-            {:ok, %{min_lat: min_lat, max_lat: max_lat, min_lng: min_lng, max_lng: max_lng}} ->
+            {min_lat, max_lat, min_lng, max_lng} ->
               {min_lat, max_lat, min_lng, max_lng}
 
             _error ->
