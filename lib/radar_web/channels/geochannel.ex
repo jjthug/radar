@@ -12,22 +12,20 @@ defmodule RadarWeb.GeoChannel do
     user_id = socket.assigns.user_id || nil
 
     cond do
-      rate_limited?(user_id) ->
+      rate_limited?(socket.assigns.last_updated_at) ->
         {:reply, {:error, "Rate limit exceeded"}, socket}
-
-      Logger.debug("passed rate_limited")
 
       needs_geohash_update?(lat, lng, socket) ->
         Logger.info("needs_geohash_update")
         new_socket = update_geohash_subscription(socket, lat, lng)
         broadcast_location_update(new_socket, user_id, lat, lng)
-        {:noreply, new_socket}
+        {:noreply, assign(new_socket,last_updated_at: System.system_time(:millisecond))}
 
 
 
       true ->
         broadcast_location_update(socket, user_id, lat, lng)
-        {:noreply, socket}
+        {:noreply, assign(socket,last_updated_at: System.system_time(:millisecond))}
 
 
     end
@@ -35,7 +33,7 @@ defmodule RadarWeb.GeoChannel do
 
   # Helper function to check if the user is rate-limited
   defp rate_limited?(nil), do: false
-  defp rate_limited?(user_id), do: Radar.Services.RateLimit.rate_limited?(user_id)
+  defp rate_limited?(last_updated_at), do: Radar.Services.RateLimit.rate_limited?(last_updated_at)
 
   # Helper function to check if the location is outside the current geohash
   defp needs_geohash_update?(lat, lng, socket) do

@@ -37,26 +37,19 @@ defmodule RadarWeb.UserSocket do
 
         topic = "geohash:#{central_geohash}"
 
-        # send(self(), {:send_auto_join, topic})
-
-        # # **Push a join event to the client**
-        # Phoenix.PubSub.broadcast(
-        #   Radar.PubSub,
-        #   "geohash:#{central_geohash}",
-        #   %{event: "phx_join", payload: %{}}
-        # )
-
-        send(self(), )
-
-        {:ok, assign(socket,
+      {:ok, assign(
+        socket,
         user_id: user_id,
         topic: topic,
+        last_updated_at: System.system_time(:millisecond),
         geohashes: geohashes,
         min_lat: min_lat,
         max_lat: max_lat,
         min_lng: min_lng,
         max_lng: max_lng
-      )}
+        )
+      }
+
     end
   end
 

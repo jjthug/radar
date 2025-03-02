@@ -12,17 +12,15 @@ defmodule Radar.Services.RateLimit do
   end
 
 
-  def rate_limited?(user_id) when is_integer(user_id) or is_binary(user_id) do
+  def rate_limited?(last_updated_at) do
     now = System.system_time(:millisecond)
 
-    case :ets.lookup(@rate_limit_table, user_id) do
-      [{_id, last_request_time}] when now - last_request_time < @rate_limit_interval ->
-        true  # Rate limit hit
-
-      _ ->
-        :ets.insert(@rate_limit_table, {user_id, now})
-        false # Request allowed
+    if now-last_updated_at < @rate_limit_interval do
+      true
+    else
+      false
     end
+
   end
 
 
