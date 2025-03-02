@@ -9,20 +9,27 @@ defmodule RadarWeb.GeoChannel do
   end
 
   def handle_in("update_location", %{"lat" => lat, "lng" => lng}, socket) do
-    user_id = socket.assigns[:user_id] || nil
+    user_id = socket.assigns.user_id || nil
 
     cond do
       rate_limited?(user_id) ->
         {:reply, {:error, "Rate limit exceeded"}, socket}
 
+      Logger.debug("passed rate_limited")
+
       needs_geohash_update?(lat, lng, socket) ->
+        Logger.info("needs_geohash_update")
         new_socket = update_geohash_subscription(socket, lat, lng)
         broadcast_location_update(new_socket, user_id, lat, lng)
         {:noreply, new_socket}
 
+
+
       true ->
         broadcast_location_update(socket, user_id, lat, lng)
         {:noreply, socket}
+
+
     end
   end
 
@@ -41,16 +48,19 @@ defmodule RadarWeb.GeoChannel do
 
   # Helper function to broadcast location update
   defp broadcast_location_update(socket, user_id, lat, lng) do
+    Logger.debug("broadcast_location_update")
     broadcast_from!(socket, "update_location", %{user_id: user_id, lat: lat, lng: lng})
   end
 
   defp update_geohash_subscription(socket, lat, lng) do
     old_geohashes = socket.assigns.geohashes || []
+
     new_geohashes = GeoHelper.compute_geohashes(lat, lng)
 
     {unsubscribe_geohashes, subscribe_geohashes} = Utils.GeoHash.geohash_diff(old_geohashes, new_geohashes)
 
     if subscribe_geohashes == [] do
+      Logger.info("empty subscribe_geohashes")
       socket
     else
       Logger.info("User moved - Updating geohash subscriptions")
@@ -62,20 +72,25 @@ defmodule RadarWeb.GeoChannel do
     end
   end
 
-
   def handle_info(:disconnect, socket) do
     {:stop, :normal, socket}
   end
 
   def terminate(_reason, socket) do
-    user_id = socket.assigns[:user_id]
+    user_id = socket.assigns.user_id
 
     if user_id do
       Logger.info("User #{user_id} disconnected, notifying others")
       # Use the correct channel topic when broadcasting
-      broadcast!(socket.assigns.topic, "user_disconnected", %{user_id: user_id})
+      broadcast_from!(socket, "user_disconnected", %{user_id: user_id})
     end
 
     :ok
   end
+
+
+  def assert_joined!(_topic) do
+    :ok
+  end
+
 end
