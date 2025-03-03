@@ -3,12 +3,30 @@ defmodule RadarWeb.GeoChannel do
   require Logger
   alias Radar.GeoHelper
 
-  def join("geohash:" <> geohash, _params, socket) do
-    Logger.info("User joined geohash channel: #{geohash}")
-    {:ok, socket}
+  def join("geohash:" <> geohash, %{"lat" => lat, "lng" => lng}, socket) do
+    Logger.info("User joining geohash channel: #{geohash}")
+
+    geohashes = socket.assigns.geohashes
+
+    if is_list(geohashes) do
+      if socket.assigns.topic == "geohash:#{geohash}" do
+        # Subscribe to all geohashes
+        Task.start(fn -> GeoHelper.subscribe_to_geohashes(geohashes) end)
+        {:ok, assign(socket, switch: false)}
+      else
+        {:error, "User is not authorized to join this topic."}
+      end
+    else
+      {:error, "geohashes not assigned or invalid"}
+    end
   end
 
+
   def handle_in("update_location", %{"lat" => lat, "lng" => lng}, socket) do
+    if socket.assigns.switch do
+      {:reply, {:error, "Switch to new geohash topic"}, socket}
+    end
+
     user_id = socket.assigns.user_id || nil
 
     cond do
@@ -18,10 +36,7 @@ defmodule RadarWeb.GeoChannel do
       needs_geohash_update?(lat, lng, socket) ->
         Logger.info("needs_geohash_update")
         new_socket = update_geohash_subscription(socket, lat, lng)
-        broadcast_location_update(new_socket, user_id, lat, lng)
-        {:noreply, assign(new_socket,last_updated_at: System.system_time(:millisecond))}
-
-
+        {:noreply, assign(new_socket,last_updated_at: System.system_time(:millisecond), switch: true)}
 
       true ->
         broadcast_location_update(socket, user_id, lat, lng)
@@ -64,15 +79,24 @@ defmodule RadarWeb.GeoChannel do
       Logger.info("User moved - Updating geohash subscriptions")
 
       Task.start(fn -> GeoHelper.unsubscribe_from_geohashes(unsubscribe_geohashes) end)
-      Task.start(fn -> GeoHelper.subscribe_to_geohashes(subscribe_geohashes) end)
 
-      assign(socket, geohashes: new_geohashes, topic: "geohash:#{List.last(new_geohashes)}")
+      central_geohash=List.last(new_geohashes)
+
+      Logger.debug("user should connect to new topic geohash:#{central_geohash}")
+
+      new_topic = "geohash:#{central_geohash}"
+      # Send a message to the client to join the new geohash topic
+      push(socket, "switch_topic", %{"prev_topic" => socket.assigns.topic, "new_topic" => new_topic})
+
+      assign(socket, topic: new_topic, geohashes: new_geohashes)
     end
   end
+
 
   def handle_info(:disconnect, socket) do
     {:stop, :normal, socket}
   end
+
 
   def terminate(_reason, socket) do
     user_id = socket.assigns.user_id

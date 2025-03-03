@@ -10,14 +10,14 @@ defmodule Radar.GeoHelper do
   # Subscribe to multiple geohash channels
   def subscribe_to_geohashes(geohashes) do
     Enum.each(geohashes, fn geo ->
-      Phoenix.PubSub.subscribe(Radar.PubSub, "geohash:#{geo}")
+      RadarWeb.Endpoint.subscribe("geohash:#{geo}")
     end)
   end
 
   # Unsubscribe from multiple geohash channels
   def unsubscribe_from_geohashes(geohashes) do
     Enum.each(geohashes, fn geo ->
-      Phoenix.PubSub.unsubscribe(Radar.PubSub, "geohash:#{geo}")
+      RadarWeb.Endpoint.unsubscribe("geohash:#{geo}")
     end)
   end
 
