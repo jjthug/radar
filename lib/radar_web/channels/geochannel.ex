@@ -3,31 +3,58 @@ defmodule RadarWeb.GeoChannel do
   require Logger
   alias Radar.GeoHelper
 
+  @geohash_precision 7
+
   def join("geohash:" <> geohash, %{"lat" => lat, "lng" => lng}, socket) do
-    Logger.info("User joining geohash channel: #{geohash}")
+    Logger.info("User attempting to join geohash channel: #{geohash}")
 
-    geohashes = socket.assigns.geohashes
+    if Map.has_key?(socket.assigns, :topic) do
+      {:error, %{reason: "already joined a topic => #{socket.assigns.topic}, leave first to join here"}}
+    end
 
-    if is_list(geohashes) do
-      if socket.assigns.topic == "geohash:#{geohash}" do
-        # Subscribe to all geohashes
-        Task.start(fn -> GeoHelper.subscribe_to_geohashes(geohashes) end)
-        {:ok, assign(socket, switch: false)}
-      else
-        {:error, "User is not authorized to join this topic."}
-      end
-    else
-      {:error, "geohashes not assigned or invalid"}
+    case Utils.GeoHash.geohash_neighbors_and_bounds(lat, lng, @geohash_precision) do
+      {:error, reason} ->
+        Logger.error("Failed to compute geohash and bounds: #{reason}")
+        {:error, %{reason: "failed to compute geohash and bounds"}}
+
+      {neighbors, {min_lat, max_lat, min_lng, max_lng}, central_geohash} ->
+        if geohash != central_geohash do
+          Logger.error("Invalid geohash topic provided: #{geohash}, expected: #{central_geohash}")
+          {:error, %{reason: "incorrect topic #{geohash}, subscribe to geohash:#{central_geohash}"}}
+        else
+          Logger.info("User joined geohash channel successfully: #{geohash}")
+
+          Task.start(fn ->
+            GeoHelper.subscribe_to_geohashes(neighbors)
+          end)
+
+          send(self(), {:after_join, {lat, lng}})
+
+          {:ok,
+           assign(socket,
+             switch: false,
+             geohashes: neighbors,
+             min_lat: min_lat,
+             max_lat: max_lat,
+             min_lng: min_lng,
+             max_lng: max_lng,
+             last_updated_at: System.system_time(:milliseconds)-2000,
+             topic: "geohash:#{geohash}"
+           )}
+        end
     end
   end
 
 
+
   def handle_in("update_location", %{"lat" => lat, "lng" => lng}, socket) do
     if socket.assigns.switch do
-      {:reply, {:error, "Switch to new geohash topic"}, socket}
+      {:reply, {:error, "Switch to new geohash topic => #{socket.assigns.switch_to_topic}"}, socket}
     end
 
     user_id = socket.assigns.user_id || nil
+
+    Logger.debug("checking needs_geohash_update, lat => #{lat} , lng => #{lng}, max_lat => #{socket.assigns.max_lat}, min_lat => #{socket.assigns.min_lat}, max_lng => #{socket.assigns.max_lng}, min_lng => #{socket.assigns.min_lng}")
 
     cond do
       rate_limited?(socket.assigns.last_updated_at) ->
@@ -36,12 +63,11 @@ defmodule RadarWeb.GeoChannel do
       needs_geohash_update?(lat, lng, socket) ->
         Logger.info("needs_geohash_update")
         new_socket = update_geohash_subscription(socket, lat, lng)
-        {:noreply, assign(new_socket,last_updated_at: System.system_time(:millisecond), switch: true)}
+        {:noreply, assign(new_socket,last_updated_at: System.system_time(:millisecond))}
 
       true ->
         broadcast_location_update(socket, user_id, lat, lng)
-        {:noreply, assign(socket,last_updated_at: System.system_time(:millisecond))}
-
+        {:noreply, assign(socket, last_updated_at: System.system_time(:millisecond))}
 
     end
   end
@@ -52,10 +78,10 @@ defmodule RadarWeb.GeoChannel do
 
   # Helper function to check if the location is outside the current geohash
   defp needs_geohash_update?(lat, lng, socket) do
-    (lat > socket.assigns.max_lat) or
-    (lat < socket.assigns.min_lat) or
-    (lng > socket.assigns.max_lng) or
-    (lng < socket.assigns.min_lng)
+    lat > socket.assigns.max_lat or
+    lat < socket.assigns.min_lat or
+    lng > socket.assigns.max_lng or
+    lng < socket.assigns.min_lng
   end
 
 
@@ -68,28 +94,30 @@ defmodule RadarWeb.GeoChannel do
   defp update_geohash_subscription(socket, lat, lng) do
     old_geohashes = socket.assigns.geohashes || []
 
-    new_geohashes = GeoHelper.compute_geohashes(lat, lng)
+    case Utils.GeoHash.geohash_encode(lat, lng, @geohash_precision) do
+      {:error, _reason} ->
+        {:reply, {:error, "failed to encode geohash"}, socket}
 
-    {unsubscribe_geohashes, subscribe_geohashes} = Utils.GeoHash.geohash_diff(old_geohashes, new_geohashes)
+      new_central_geohash ->
+        Logger.info("User moved - Updating geohash subscriptions")
 
-    if subscribe_geohashes == [] do
-      Logger.info("empty subscribe_geohashes")
-      socket
-    else
-      Logger.info("User moved - Updating geohash subscriptions")
+        Task.start(fn -> GeoHelper.unsubscribe_from_geohashes(old_geohashes) end)
 
-      Task.start(fn -> GeoHelper.unsubscribe_from_geohashes(unsubscribe_geohashes) end)
+        new_topic = "geohash:#{new_central_geohash}"
 
-      central_geohash=List.last(new_geohashes)
+        Logger.debug("user should connect to new topic => #{new_topic}")
 
-      Logger.debug("user should connect to new topic geohash:#{central_geohash}")
+        # Send a message to the client to join the new geohash topic
+        push(socket, "switch_topic", %{"prev_topic" => socket.assigns.topic, "new_topic" => new_topic})
 
-      new_topic = "geohash:#{central_geohash}"
-      # Send a message to the client to join the new geohash topic
-      push(socket, "switch_topic", %{"prev_topic" => socket.assigns.topic, "new_topic" => new_topic})
-
-      assign(socket, topic: new_topic, geohashes: new_geohashes)
+        assign(socket, switch: true, switch_to_topic: new_topic, geohashes: [])
     end
+  end
+
+
+  def handle_info({:after_join, {lat, lng}}, socket) do
+    broadcast_from!(socket, "update_location", %{lat: lat, lng: lng})
+    {:noreply, socket}
   end
 
 

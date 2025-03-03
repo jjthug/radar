@@ -1,12 +1,5 @@
 defmodule Radar.GeoHelper do
 
-  @precision 7 # 152 x 152 m
-
-  # Compute 9 geohashes
-  def compute_geohashes(lat, lng) do
-    Utils.GeoHash.geohash_neighbors(lat, lng, @precision)
-  end
-
   # Subscribe to multiple geohash channels
   def subscribe_to_geohashes(geohashes) do
     Enum.each(geohashes, fn geo ->
