@@ -21,7 +21,6 @@ defmodule RadarWeb.UserSocket do
             {:ok,
            assign(socket,
              user_id: user_id,
-             last_updated_at: System.system_time(:milliseconds) - 2000,
              central_geohash: central_geohash
            )}
 
