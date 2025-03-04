@@ -21,7 +21,6 @@ defmodule RadarWeb.UserSocket do
             {:ok,
            assign(socket,
              user_id: user_id,
-             central_geohash: central_geohash
            )}
 
         end
