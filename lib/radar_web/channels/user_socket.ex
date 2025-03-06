@@ -6,7 +6,7 @@ defmodule RadarWeb.UserSocket do
 
   channel "geohash:*", RadarWeb.GeoChannel
 
-  def connect(%{"token" => token, "lat" => lat, "lng" => lng}, socket, _connect_info) do
+  def connect(%{"token" => token}, socket, _connect_info) do
     Logger.debug("Attempting to connect with token: #{inspect(token)}")
 
     case Radar.Cache.get(token) do
@@ -15,17 +15,12 @@ defmodule RadarWeb.UserSocket do
         {:error, :invalid_token}
 
       user_id ->
-        case Utils.GeoHash.geohash_encode_str(lat,lng, @geohash_precision) do
-          {:error, _reason} -> {:reply, {:error , "failed to encode geohash"}, socket}
-          central_geohash ->
-            {:ok,
-           assign(socket,
-             user_id: user_id,
-             updated_at: System.system_time(:milliseconds) - 2000,
-             central_geohash: central_geohash
-           )}
+        {:ok,
+        assign(socket,
+          user_id: user_id,
+          updated_at: System.system_time(:millisecond) - 2000
+        )}
 
-        end
     end
   end
 

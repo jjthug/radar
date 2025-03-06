@@ -38,7 +38,7 @@ defmodule RadarWeb.GeoChannel do
              max_lat: max_lat,
              min_lng: min_lng,
              max_lng: max_lng,
-             last_updated_at: System.system_time(:milliseconds)-2000,
+             last_updated_at: System.system_time(:millisecond)-2000,
              topic: "geohash:#{geohash}"
            )}
         end
@@ -53,8 +53,6 @@ defmodule RadarWeb.GeoChannel do
     end
 
     user_id = socket.assigns.user_id || nil
-
-    Logger.debug("checking needs_geohash_update, lat => #{lat} , lng => #{lng}, max_lat => #{socket.assigns.max_lat}, min_lat => #{socket.assigns.min_lat}, max_lng => #{socket.assigns.max_lng}, min_lng => #{socket.assigns.min_lng}")
 
     cond do
       rate_limited?(socket.assigns.last_updated_at) ->
