@@ -48,25 +48,29 @@ defmodule RadarWeb.GeoChannel do
 
 
   def handle_in("update_location", %{"lat" => lat, "lng" => lng}, socket) do
-    if socket.assigns.switch do
-      {:reply, {:error, "Switch to new geohash topic => #{socket.assigns.switch_to_topic}"}, socket}
-    end
-
-    user_id = socket.assigns.user_id || nil
-
-    cond do
-      rate_limited?(socket.assigns.last_updated_at) ->
-        {:reply, {:error, "Rate limit exceeded"}, socket}
-
-      needs_geohash_update?(lat, lng, socket) ->
-        Logger.info("needs_geohash_update")
-        new_socket = update_geohash_subscription(socket, lat, lng)
-        {:noreply, assign(new_socket,last_updated_at: System.system_time(:millisecond))}
-
+    case socket.assigns.switch do
       true ->
-        broadcast_location_update(socket, user_id, lat, lng)
-        {:noreply, assign(socket, last_updated_at: System.system_time(:millisecond))}
+        Logger.debug("Switch is true")
+        {:reply, {:error, "Switch to new geohash topic => #{socket.assigns.switch_to_topic}"}, socket}
 
+      _ ->
+        user_id = socket.assigns.user_id || nil
+
+        cond do
+          rate_limited?(socket.assigns.last_updated_at) ->
+            Logger.info("rate limited")
+            {:reply, {:error, "Rate limit exceeded"}, socket}
+
+          needs_geohash_update?(lat, lng, socket) ->
+            Logger.info("needs_geohash_update")
+            new_socket = update_geohash_subscription(socket, lat, lng)
+            {:noreply, assign(new_socket, last_updated_at: System.system_time(:millisecond))}
+
+          true ->
+            broadcast_location_update(socket, user_id, lat, lng)
+            Logger.info("broadcast_location_update")
+            {:noreply, assign(socket, last_updated_at: System.system_time(:millisecond))}
+        end
     end
   end
 
