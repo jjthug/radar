@@ -13,7 +13,6 @@ defmodule Radar.GeoCache do
       nil ->
         # User doesn't exist, just add them
         Radar.Cache.put(user_key, %{geohash: new_geohash, lat: lat, lon: lon})
-        Logger.debug("adding user key => #{user_key} with geohash #{new_geohash}")
         add_user_to_geohash(new_geohash, user_id)
 
       %{geohash: old_geohash, lat: old_lat, lon: old_lon} ->
@@ -43,16 +42,14 @@ defmodule Radar.GeoCache do
 
     user_ids_set =
       Enum.reduce(user_ids_tuples, MapSet.new(), fn {_, user_ids}, acc ->
-        MapSet.union(acc, MapSet.new(user_ids || []))
+        MapSet.union(acc, user_ids)  # Remove redundant MapSet.new()
       end)
 
     get_users(user_ids_set)
   end
 
   def get_users(user_ids_set) when is_struct(user_ids_set, MapSet) do
-    Logger.debug("IO.inspect(MapSet.to_list(MapSet.new([69]))) => #{IO.inspect(MapSet.to_list(MapSet.new([69])))}")
-    Logger.debug("user_ids_set => #{inspect(user_ids_set)}, MapSet.to_list(user_ids_set) => #{MapSet.to_list(user_ids_set)}, Radar.Cache.get_all(MapSet.to_list(user_ids_set))=> #{inspect(Radar.Cache.get_all(MapSet.to_list(user_ids_set)))}")
-    Radar.Cache.get_all(MapSet.to_list(user_ids_set))
+    Radar.Cache.get_all(Enum.map(MapSet.to_list(user_ids_set), &to_string/1))
   end
 
 
