@@ -25,18 +25,11 @@ fn geohash_encode_str(lat: String, lon: String, precision: usize) -> NifResult<S
 
 #[rustler::nif(schedule = "DirtyCpu")]
 fn geohash_neighbors_and_bounds(
-    lat_str: String,
-    lon_str: String,
+    lat: f64,
+    lon: f64,
     precision: usize,
 ) -> NifResult<(Vec<String>, (f64, f64, f64, f64), String)> {
     // Convert lat & lon from String to f64
-    let lat: f64 = lat_str
-        .parse()
-        .map_err(|_| rustler::Error::Atom("invalid_latitude"))?;
-    let lon: f64 = lon_str
-        .parse()
-        .map_err(|_| rustler::Error::Atom("invalid_longitude"))?;
-
     let coord = geohash::Coord { x: lon, y: lat };
     let hash = geohash::encode(coord, precision)
         .map_err(|_| rustler::Error::Atom("geohash_encode_failed"))?;
