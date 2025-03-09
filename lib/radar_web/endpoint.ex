@@ -14,6 +14,7 @@ defmodule RadarWeb.Endpoint do
   ]
 
   socket "/socket", RadarWeb.UserSocket,
+      timeout: :infinity,
       websocket: true,
       longpoll: false
 

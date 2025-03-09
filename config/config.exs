@@ -65,6 +65,19 @@ config :logger, :console,
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
+
+config :libcluster,
+  topologies: [
+    nebulex_cluster: [
+      strategy: Cluster.Strategy.DNSPoll,
+      config: [
+        query: Application.get_env(:radar, :dns_cluster_query) || "nebulex-cache-headless.default.svc.cluster.local",
+        node_basename: "radar",
+        polling_interval: 5_000  # Check every 5 seconds
+      ]
+    ]
+  ]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

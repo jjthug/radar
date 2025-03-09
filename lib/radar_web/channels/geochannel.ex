@@ -28,6 +28,10 @@ defmodule RadarWeb.GeoChannel do
             GeoHelper.subscribe_to_geohashes(neighbors)
           end)
 
+          Task.start(fn ->
+            Radar.GeoCache.update_user_location(central_geohash, socket.assigns.user_id, lat, lng)
+          end)
+
           send(self(), {:after_join, {lat, lng}})
 
           {:ok,
@@ -54,8 +58,6 @@ defmodule RadarWeb.GeoChannel do
         {:reply, {:error, "Switch to new geohash topic => #{socket.assigns.switch_to_topic}"}, socket}
 
       _ ->
-        user_id = socket.assigns.user_id || nil
-
         cond do
           rate_limited?(socket.assigns.last_updated_at) ->
             Logger.info("rate limited")
@@ -67,7 +69,9 @@ defmodule RadarWeb.GeoChannel do
             {:noreply, assign(new_socket, last_updated_at: System.system_time(:millisecond))}
 
           true ->
-            broadcast_location_update(socket, user_id, lat, lng)
+            # get nearby geohash users
+            users= Radar.GeoCache.get_users_by_geohashes(socket.assigns.geohashes)
+            push(socket, "neaby_users", %{users: users})
             Logger.info("broadcast_location_update")
             {:noreply, assign(socket, last_updated_at: System.system_time(:millisecond))}
         end

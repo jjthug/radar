@@ -8,11 +8,11 @@ defmodule Radar.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      {Cluster.Supervisor, [Application.get_env(:libcluster, :topologies), [name: MyApp.ClusterSupervisor]]},
       Radar.Cache,
-      {Radar.Services.RateLimit, %{}},
+      # {Radar.Services.RateLimit, %{}},
       RadarWeb.Telemetry,
       Radar.Repo,
-      {DNSCluster, query: Application.get_env(:radar, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Radar.PubSub},
       # Start the Finch HTTP client for sending emails
       {Finch, name: Radar.Finch},

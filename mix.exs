@@ -56,7 +56,8 @@ defmodule Radar.MixProject do
       {:bandit, "~> 1.2"},
       {:rustler, "~> 0.36", runtime: false},
       {:nebulex, "~> 2.6.4"},
-      {:corsica, "~> 2.1"}
+      {:corsica, "~> 2.1"},
+      {:libcluster, "~> 3.5"}
     ]
   end
 
